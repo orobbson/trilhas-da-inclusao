@@ -1,12 +1,11 @@
 // api/gemini.js
-// Este arquivo atua como um intermediário seguro (proxy).
+// Versão corrigida do intermediário seguro (proxy).
 
 export default async function handler(request, response) {
-  // 1. Pega os dados (prompt, idade, idioma) que o jogo enviou do navegador.
+  // 1. Pega o payload do prompt que o jogo enviou.
   const { promptPayload } = await request.json();
 
   // 2. Pega a chave da API em segurança do ambiente da Vercel.
-  // A chave NUNCA fica exposta aqui. Ela é configurada no painel da Vercel.
   const apiKey = process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -16,21 +15,22 @@ export default async function handler(request, response) {
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
 
   try {
-    // 3. O servidor faz a chamada para a API do Gemini de forma segura.
+    // 3. O servidor faz a chamada para a API do Gemini.
     const geminiResponse = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(promptPayload) // Usa o payload original do seu jogo
+      body: JSON.stringify(promptPayload) // Envia o payload diretamente
     });
 
     if (!geminiResponse.ok) {
-      console.error("Erro da API do Gemini:", await geminiResponse.text());
+      const errorBody = await geminiResponse.text();
+      console.error("Erro da API do Gemini:", errorBody);
       throw new Error(`Erro na API do Gemini: ${geminiResponse.statusText}`);
     }
 
     const data = await geminiResponse.json();
     
-    // 4. Devolve a resposta da IA para o seu jogo no navegador.
+    // 4. Devolve a resposta da IA para o seu jogo.
     return response.status(200).json(data);
 
   } catch (error) {
