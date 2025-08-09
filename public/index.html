@@ -1,7 +1,5 @@
-<!-- O HTML e o CSS continuam os mesmos. A única mudança é no JavaScript. -->
 <!DOCTYPE html>
 <html lang="pt-BR">
-<!-- ... (todo o seu HTML e CSS até a tag script) ... -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -140,7 +138,6 @@
     </style>
 </head>
 <body>
-  <!-- ... (todo o seu HTML até a tag script) ... -->
   <div id="startScreen">
     <h2 data-i18n="welcome_title">Bem-vindo(a) às Trilhas da Inclusão!</h2>
     <div id="language-selection">
@@ -191,12 +188,12 @@
     </div>
   </div>
 
-<script>
+  <script>
     // --- VARIÁVEIS DE ESTADO DO JOGO ---
     let score = 0, maxScore = 0, activityCount = 0;
     const TOTAL_ACTIVITIES = 5;
     let userAgeRange = '', currentLanguage = 'pt-BR';
-    let isAudioReady = false, isMuted = false, isOfflineMode = false, keyboardMode = false;
+    let isAudioReady = false, isMuted = false, keyboardMode = false;
     let scenarioQueue = [], fallbackQueue = [], voice = null;
 
     // --- ELEMENTOS DO DOM ---
@@ -684,24 +681,11 @@
 
     async function fetchScenarioBatch() {
         loader.classList.remove('hidden');
-        const apiKey = "COLE_SUA_CHAVE_DE_API_AQUI"; // Substitua pela sua chave de API para o modo online
-        
-        if (!apiKey || apiKey === "COLE_SUA_CHAVE_DE_API_AQUI") {
-            console.log("Nenhuma chave de API encontrada. Usando cenários de fallback.");
-            isOfflineMode = true;
-            maxScore = 3 + 3 + i18n[currentLanguage].empathy_minigame.turns.length;
-            refillFallbackQueue();
-            scenarioQueue.push(...fallbackQueue);
-            const loaderText = loader.querySelector('p');
-            loaderText.textContent = i18n[currentLanguage].offline_loaded;
-            setTimeout(() => loader.classList.add('hidden'), 500);
-            return;
-        }
         
         const langName = { 'pt-BR': 'Português do Brasil', 'en-US': 'Inglês', 'es-ES': 'Espanhol' }[currentLanguage];
         const prompt = `Crie um lote de 3 cenários únicos para um jogo educacional sobre inclusão. Faixa etária: "${userAgeRange} anos". IMPORTANTE: Gere todo o texto estritamente em ${langName}. Para cada cenário, forneça: 'text' (situação), 'image_query' (em inglês), e 'options' (array de 2 objetos com 'text', 'score' (0 ou 1), e 'feedback')).`;
 
-        const payload = {
+        const promptPayload = {
             contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: {
                 responseMimeType: "application/json",
@@ -710,10 +694,13 @@
         };
 
         try {
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const response = await fetch('/api/gemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ promptPayload })
+            });
 
-            if (!response.ok) throw new Error(`API Error`);
+            if (!response.ok) throw new Error(`API Error: ${response.statusText}`);
             const result = await response.json();
             if (!result.candidates?.[0]?.content?.parts?.[0]?.text) throw new Error("API response invalid.");
             
@@ -729,8 +716,13 @@
             maxScore = 3 + 3 + i18n[currentLanguage].empathy_minigame.turns.length;
             refillFallbackQueue();
             scenarioQueue.push(...fallbackQueue);
+            const loaderText = loader.querySelector('p');
+            loaderText.textContent = i18n[currentLanguage].offline_loaded;
+            setTimeout(() => loader.classList.add('hidden'), 500);
         } finally {
-            loader.classList.add('hidden');
+            if (!isOfflineMode) {
+                loader.classList.add('hidden');
+            }
         }
     }
 
